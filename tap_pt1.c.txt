@@ -6,6 +6,7 @@
 // Our current position, in steps
 
 static int current_position;
+static int target_position;
 
 // Called from the application to begin a motor move
 void begin_motor_move(int target_position, int duration) {
@@ -13,9 +14,12 @@ void begin_motor_move(int target_position, int duration) {
 	// target_position in steps
 	// duration in ms
 
-	int delta = target_position - current_position;
+	int delta = abs(target_position - current_position);
+	if (delta == 0) {
+		return; // alternatively, display a message
+	}
 
-	set_tick_period(duration / delta * 1000);
+	set_tick_period(duration * 1000 / delta);
 	// period in microseconds
 
 	enable_ticks();
@@ -23,12 +27,14 @@ void begin_motor_move(int target_position, int duration) {
 
 // Tick ISR
 void on_tick() {
+	if (current_position == target_position) {
+		disable_ticks();
+		return;
+	}
 	bool reverse = current_position > target_position;
 	gpio_set(DIRECTION_PIN, reverse);
 	gpio_set(STEP_PIN, 1);
+	// may need a delay here
 	gpio_set(STEP_PIN, 0);
 	current_position += reverse ? -1 : 1;
-	if (current_position == target_position) {
-	disable_ticks();
-	}
 }
